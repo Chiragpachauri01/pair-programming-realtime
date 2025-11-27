@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Real-time Pair Programming Demo</title>
+
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    textarea {
+      width: 100%; 
+      height: 400px;
+      font-size: 14px; 
+      font-family: monospace;
+    }
+    input { padding: 6px; width: 300px; }
+
+    #suggestionBox {
+      margin-top: 8px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      background: #f2f2f2;
+      font-family: monospace;
+      white-space: pre-wrap;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>Real-Time Code Editor </h2>
+  <p>Open this file in two browser windows using the same Room ID.</p>
+
+
+  <label>
+    Room ID:
+    <input id="roomInput" />
+  </label>
+  <button onclick="joinRoom()">Join Room</button>
+  <button onclick="createRoom()">Create Room</button>
+
+  <h3>Editor</h3>
+  <textarea id="editor" disabled></textarea>
+
+  <div id="suggestionBox"></div>
+
+<script>
+let ws = null;
+let roomId = null;
+let ignoreIncoming = false;
+
+// Debounce timer for autocomplete
+let typingTimer = null;
+const AUTOCOMPLETE_DELAY = 600;
+
+function joinRoom() {
+    const input = document.getElementById('roomInput');
+    roomId = input.value.trim();
+
+    if (!roomId) {
+        alert('Enter Room ID');
+        return;
+    }
+
+    ws = new WebSocket(`ws://localhost:8000/ws/${roomId}`);
+
+    ws.onopen = () => {
+        document.getElementById('editor').disabled = false;
+    };
+
+    ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        const editor = document.getElementById('editor');
+
+        if (msg.type === 'init' || msg.type === 'update') {
+            ignoreIncoming = true;
+            editor.value = msg.code;
+            ignoreIncoming = false;
+        }
+    };
+}
+
+async function createRoom() {
+    try {
+        const response = await fetch("http://localhost:8000/rooms", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" }
+        });
+
+        const data = await response.json();
+        document.getElementById("roomInput").value = data.roomId;
+
+        // Auto join the newly created room
+        joinRoom();
+    } 
+    catch (err) {
+        alert("Failed to create room");
+        console.error(err);
+    }
+}
+
+async function fetchAutocomplete() {
+    const editor = document.getElementById('editor');
+    const suggestionBox = document.getElementById('suggestionBox');
+
+    const payload = {
+        code: editor.value,
+        cursorPosition: editor.selectionStart,
+        language: "python"
+    };
+
+    try {
+        const res = await fetch("http://localhost:8000/autocomplete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (data.suggestion) {
+            suggestionBox.style.display = "block";
+            suggestionBox.textContent = data.suggestion;
+        } else {
+            suggestionBox.style.display = "none";
+        }
+    } catch (err) {
+        console.log("Autocomplete failed:", err);
+    }
+}
+
+document.getElementById('editor').addEventListener('input', () => {
+    const editor = document.getElementById('editor');
+    const suggestionBox = document.getElementById('suggestionBox');
+
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    if (ignoreIncoming) return;
+
+    // Broadcast edit to backend
+    ws.send(JSON.stringify({
+        type: "update",
+        code: editor.value
+    }));
+
+    // Debounced autocomplete
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(fetchAutocomplete, AUTOCOMPLETE_DELAY);
+});
+
+// Hide suggestions when editor loses focus
+document.getElementById('editor').addEventListener('blur', () => {
+    document.getElementById('suggestionBox').style.display = "none";
+});
+</script>
+
+</body>
+</html>
