@@ -11,7 +11,6 @@ mocked autocomplete system. The frontend is intentionally minimal and uses plain
 - Real-time code syncing through WebSockets
 - Two browser windows stay in sync instantly
 - Mock autocomplete suggestion (rule-based)
-- TAB key inserts the suggestion
 - Very simple frontend for easy testing
 
 **Running with Docker**
