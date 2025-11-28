@@ -14,29 +14,11 @@ mocked autocomplete system. The frontend is intentionally minimal and uses plain
 - TAB key inserts the suggestion
 - Very simple frontend for easy testing
 
-**Project Structure**
-backend/
-  app/
-    main.py
-    db.py
-    models.py
-    ws_manager.py
-  routers/
-    rooms.py
-    autocomplete.py
-  services/
-    rooms_service.py
-  Dockerfile
-  requirements.txt
-frontend/
-  minimal-demo.html
-docker-compose.yml
-README.md
-
 **Running with Docker**
 docker-compose up --build
 Open API documentation at http://localhost:8000/docs
-Running Without Docker
+
+**Running Without Docker**
 cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --reload
@@ -60,9 +42,9 @@ postgres://postgres:postgres@localhost:5432/pairprog
 
 **Future Improvements**
 - Real AI autocomplete
-- React UI with Monaco editor
+- React UI with Monaco editor or CodeMirror
 - Cursor presence indicators
-- CRDT/OT for better conflict resolution
+- Improve conflict handling by grouping edits together, keeping track of update versions, and adding simple line-level locking.
 - Deployment on Render/Railway
 
 **Limitations**
